@@ -1,6 +1,6 @@
 # Chat Demo WebView 套壳
 
-把 `C:\Other\tools\chat-demo` 里的静态站点原样打包进 APK，用系统 WebView 打开。
+把构建好的聊天 Web 应用（静态站点）原样打包进 APK，用系统 WebView 打开。
 **页面和所有静态资源都来自 APK 内部的 assets，不加载任何远程页面。**
 
 ## 下载 APK
@@ -50,8 +50,8 @@ new WebViewAssetLoader.Builder()
 
 需要 JDK 17 + Android SDK（Platform 35 / Build-Tools 35.0.0）。
 
-> 本机 PATH 上的默认 Java 是 25，Gradle 8.9 不支持它。命令行构建前请先设置：
-> `set JAVA_HOME=C:\Program Files\Java\jdk-17`
+> 构建需要 JDK 17。如果默认 `java` 版本不是 17，请先设置：
+> `set JAVA_HOME=<JDK 17 安装目录>`
 
 ```bat
 gradlew.bat assembleDebug
@@ -64,10 +64,11 @@ Studio 会自动生成。
 
 ## 更新网页内容
 
-网页有改动时，把新构建的产物重新复制进 assets 即可（保留目录结构）：
+网页有改动时，把新构建的静态产物重新复制进 `app/src/main/assets` 即可
+（保留目录结构，`index.html` 放在 assets 根目录）：
 
 ```bat
-robocopy "C:\Other\tools\chat-demo" "app\src\main\assets" /MIR
+robocopy "<网站构建输出目录>" "app\src\main\assets" /MIR
 ```
 
 注意 `/MIR` 会删除 assets 里多余的文件，确保只放网站内容。
@@ -121,7 +122,7 @@ AVD `chatdemo_test`（Android 15 / API 35 / x86_64，WHPX 硬件加速）：
 3. 构建：
 
    ```bat
-   set JAVA_HOME=C:\Program Files\Java\jdk-17
+   set JAVA_HOME=<JDK 17 安装目录>
    gradlew.bat assembleDebug
    ```
 
@@ -139,9 +140,7 @@ AVD `chatdemo_test`（Android 15 / API 35 / x86_64，WHPX 硬件加速）：
    gh release create v1.0.1 app\build\outputs\apk\debug\app-debug.apk --title "v1.0.1" --notes "更新说明"
    ```
 
-> 本机 `git` 与 `gh` 分别安装在 `C:\Program Files\Git\cmd` 和
-> `C:\Program Files\GitHub CLI`；若新开的终端找不到命令，重新登录 Windows
-> 或把这两个目录加入 PATH。
+> 需要本机已安装 Git 和 GitHub CLI（`gh`），并已执行 `gh auth login`。
 
 ## 其它
 

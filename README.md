@@ -3,6 +3,13 @@
 把 `C:\Other\tools\chat-demo` 里的静态站点原样打包进 APK，用系统 WebView 打开。
 **页面和所有静态资源都来自 APK 内部的 assets，不加载任何远程页面。**
 
+## 下载 APK
+
+- 发布页：<https://github.com/ShaHeqing/DS_Chat-Demo_M/releases/latest>
+- 在 Release 的 **Assets** 里下载 `ChatDemo-vX.Y.Z.apk`
+- 当前仓库是私有的，下载前需要登录 GitHub；公开后即可直接下载
+- APK 使用 debug 签名，仅供测试安装（安装时需允许「未知来源」）
+
 ## 结构
 
 ```
@@ -105,6 +112,36 @@ AVD `chatdemo_test`（Android 15 / API 35 / x86_64，WHPX 硬件加速）：
 > 页面本身要求有效 API Key 才会进入语音输入流程，验证时是通过 WebView 远程调试
 > 直接调用 `getUserMedia` 完成的。debug 构建已启用 WebView 调试（`chrome://inspect`），
 > release 构建不会启用。
+
+## 发布新版本
+
+1. 按上一节更新 `app/src/main/assets`。
+2. 递增 `app/build.gradle.kts` 中的 `versionCode`（Android 靠它识别升级），
+   并按需修改 `versionName`。
+3. 构建：
+
+   ```bat
+   set JAVA_HOME=C:\Program Files\Java\jdk-17
+   gradlew.bat assembleDebug
+   ```
+
+4. 提交并推送源码：
+
+   ```bat
+   git add -A
+   git commit -m "Release v1.0.1"
+   git push
+   ```
+
+5. 创建 Release 并上传 APK：
+
+   ```bat
+   gh release create v1.0.1 app\build\outputs\apk\debug\app-debug.apk --title "v1.0.1" --notes "更新说明"
+   ```
+
+> 本机 `git` 与 `gh` 分别安装在 `C:\Program Files\Git\cmd` 和
+> `C:\Program Files\GitHub CLI`；若新开的终端找不到命令，重新登录 Windows
+> 或把这两个目录加入 PATH。
 
 ## 其它
 

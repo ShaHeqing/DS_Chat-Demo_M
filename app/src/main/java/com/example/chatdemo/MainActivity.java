@@ -9,8 +9,11 @@ import android.content.Intent;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
+import android.graphics.Rect;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
+import android.view.View;
 import android.webkit.PermissionRequest;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
@@ -26,7 +29,12 @@ import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.webkit.WebViewAssetLoader;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -38,9 +46,10 @@ import java.util.List;
  * file:///android_asset/...) keeps localStorage, fetch/XHR and CORS working the
  * same way they do in a browser.
  *
- * Also bridges the two browser features the page relies on:
+ * Also bridges the browser features the page relies on:
  *   - <input type="file">      -> system file picker (single and multiple)
  *   - getUserMedia({audio})    -> runtime RECORD_AUDIO permission + WebView grant
+ *   - sidebar edge swipe       -> injected JS (res/raw/sidebar_swipe.js)
  */
 public class MainActivity extends Activity {
 
@@ -102,6 +111,14 @@ public class MainActivity extends Activity {
                 openInBrowser(uri);
                 return true;
             }
+
+            @Override
+            public void onPageFinished(WebView view, String url) {
+                super.onPageFinished(view, url);
+                if (url != null && url.startsWith("https://" + ASSET_HOST + "/")) {
+                    injectSidebarSwipe(view);
+                }
+            }
         });
 
         // On Android 15+ (targetSdk 35) the window is edge-to-edge. Padding the
@@ -117,11 +134,64 @@ public class MainActivity extends Activity {
             Insets bars = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars());
             Insets ime = windowInsets.getInsets(WindowInsetsCompat.Type.ime());
             view.setPadding(bars.left, bars.top, bars.right, Math.max(bars.bottom, ime.bottom));
+            view.post(() -> reserveEdgeForSidebarSwipe(view, windowInsets));
             return windowInsets;
         });
 
         setContentView(container);
         webView.loadUrl(START_URL);
+    }
+
+    /**
+     * Under gesture navigation the system claims the first ~30dp of each screen
+     * edge for its back gesture, so a swipe starting on the very edge never
+     * reaches the WebView. Exclude a narrow strip on the left so the sidebar
+     * gesture can start at the edge; back is still available from the right
+     * edge, the navigation bar and the hardware key.
+     *
+     * The platform only honors 200dp of vertical extent, so the strip is
+     * centered vertically. Outside that band the gesture can still start just
+     * inside the edge, outside the system's back-gesture area.
+     */
+    private void reserveEdgeForSidebarSwipe(View view, WindowInsetsCompat windowInsets) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+            return;
+        }
+        int gestureInset = windowInsets.getInsets(WindowInsetsCompat.Type.systemGestures()).left;
+        if (gestureInset <= 0 || view.getHeight() <= 0) {
+            view.setSystemGestureExclusionRects(Collections.emptyList());
+            return;
+        }
+        float density = getResources().getDisplayMetrics().density;
+        int width = Math.min(
+                gestureInset + Math.round(4 * density),
+                Math.round(48 * density));
+        // The platform caps gesture exclusions at 200dp of vertical extent.
+        int maxHeight = Math.round(200 * density);
+        int top = Math.max(0, (view.getHeight() - maxHeight) / 2);
+        int bottom = Math.min(view.getHeight(), top + maxHeight);
+        view.setSystemGestureExclusionRects(Collections.singletonList(
+                new Rect(0, top, width, bottom)));
+    }
+
+    /**
+     * The web bundle is prebuilt and its sidebar is mounted lazily without any
+     * transition, so the swipe gesture is injected on top of it instead of
+     * modifying the bundle. The script is idempotent and safe to inject again.
+     */
+    private void injectSidebarSwipe(WebView view) {
+        try (InputStream in = getResources().openRawResource(R.raw.sidebar_swipe)) {
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            byte[] buffer = new byte[8192];
+            int read;
+            while ((read = in.read(buffer)) != -1) {
+                out.write(buffer, 0, read);
+            }
+            String script = new String(out.toByteArray(), StandardCharsets.UTF_8);
+            view.evaluateJavascript(script, null);
+        } catch (IOException e) {
+            // Progressive enhancement: the page still works without the gesture.
+        }
     }
 
     /**
@@ -294,6 +364,23 @@ public class MainActivity extends Activity {
 
     @Override
     public void onBackPressed() {
+        if (webView == null) {
+            super.onBackPressed();
+            return;
+        }
+        // Back closes an open sidebar (with the gesture animation) before it
+        // navigates WebView history or leaves the app.
+        webView.evaluateJavascript(
+                "(function(){var s=window.__chatDemoSidebarSwipe;"
+                        + "if(s&&s.isOpen()){s.close();return true;}return false;})()",
+                value -> {
+                    if (!"true".equals(value)) {
+                        handleBackFallback();
+                    }
+                });
+    }
+
+    private void handleBackFallback() {
         if (webView != null && webView.canGoBack()) {
             webView.goBack();
         } else {

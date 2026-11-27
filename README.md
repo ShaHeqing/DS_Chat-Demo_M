@@ -7,7 +7,7 @@
 
 - 发布页：<https://github.com/ShaHeqing/DS_Chat-Demo_M/releases/latest>
 - 在 Release 的 **Assets** 里下载 `ChatDemo-vX.Y.Z.apk`
-- 当前仓库是私有的，下载前需要登录 GitHub；公开后即可直接下载
+- 仓库已公开，可直接下载，无需登录 GitHub
 - APK 使用 debug 签名，仅供测试安装（安装时需允许「未知来源」）
 
 ## 结构

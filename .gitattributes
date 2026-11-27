@@ -1,0 +1,14 @@
+# Normalize text files in the repository; keep shell scripts LF on checkout.
+* text=auto
+gradlew text eol=lf
+gradle/wrapper/gradle-wrapper.properties text eol=lf
+*.bat text eol=crlf
+
+# Binary files
+*.jar binary
+*.apk binary
+*.png binary
+*.jpg binary
+*.ttf binary
+*.woff binary
+*.woff2 binary

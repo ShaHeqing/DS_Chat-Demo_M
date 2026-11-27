@@ -1,6 +1,7 @@
 # Chat Demo WebView 套壳
 
-把构建好的聊天 Web 应用（静态站点）原样打包进 APK，用系统 WebView 打开。
+把 [deepseek-ai/chat-demo](https://github.com/deepseek-ai/chat-demo) 构建出的静态站点
+原样打包进 APK，用系统 WebView 打开。
 **页面和所有静态资源都来自 APK 内部的 assets，不加载任何远程页面。**
 
 ## 下载 APK
@@ -65,11 +66,19 @@ Studio 会自动生成。
 
 ## 更新网页内容
 
-网页有改动时，把新构建的静态产物重新复制进 `app/src/main/assets` 即可
-（保留目录结构，`index.html` 放在 assets 根目录）：
+网页产物来自 [deepseek-ai/chat-demo](https://github.com/deepseek-ai/chat-demo)。
+更新时先在该仓库构建（Node.js 22.12+，pnpm）：
+
+```bash
+pnpm install
+pnpm build
+```
+
+然后把 `dist/` 里的内容复制进 `app/src/main/assets`（保留目录结构，
+`index.html` 放在 assets 根目录）：
 
 ```bat
-robocopy "<网站构建输出目录>" "app\src\main\assets" /MIR
+robocopy "<dist 目录>" "app\src\main\assets" /MIR
 ```
 
 注意 `/MIR` 会删除 assets 里多余的文件，确保只放网站内容。
@@ -185,6 +194,14 @@ AVD `chatdemo_test`（Android 15 / API 35）：
    ```
 
 > 需要本机已安装 Git 和 GitHub CLI（`gh`），并已执行 `gh auth login`。
+
+## 来源与许可
+
+- Web 前端：[deepseek-ai/chat-demo](https://github.com/deepseek-ai/chat-demo)，MIT License
+- 当前内置的网页版本可通过 `app/src/main/assets/index.html` 中的
+  `application-version` 查看
+- 原始许可文件随网页产物一起打包在 `app/src/main/assets/LICENSE`
+- 本仓库仅提供 Android WebView 包装层，属于第三方封装，并非 DeepSeek 官方发布
 
 ## 其它
 
